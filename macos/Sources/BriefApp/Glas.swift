@@ -60,6 +60,12 @@ struct GlasGruppe<Inhalt: View>: View {
     @ViewBuilder var inhalt: Inhalt
     var body: some View {
         if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: abstand) { inhalt }
+        } else {
+            inhalt
+        }
+    }
+}
 
 /// Abschnittsüberschrift, optional zum Auf- und Zuklappen und mit Anzahl
 struct Abschnitt: View {
