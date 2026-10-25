@@ -19,7 +19,7 @@ struct WidgetKopf: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Color.accentColor)
                 .font(.system(size: kompakt ? 13 : 15, weight: .semibold))
-            Text(kompakt ? (daten.offen.isEmpty ? T("Post") : PostText.anzahl(daten.offen)) : PostText.titel(daten.offen))
+            Text(kompakt ? (daten.offen.isEmpty ? T("Post") : T("%1 unterwegs", "\(daten.offen.count)")) : PostText.titel(daten.offen))
                 .font(.system(size: kompakt ? 12 : 13, weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)

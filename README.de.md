@@ -5,6 +5,12 @@ Ein Widget für KDE Plasma 6 und eine native macOS-App (Menüleiste + Schreibtis
 Home-Assistant-Integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA): sehen, wer geschrieben
 hat, bevor der Brief im Kasten liegt – mit dem Bild des Umschlags.
 
+## Bilder
+
+| Plasma: Kacheln auf dem Schreibtisch | macOS: Menüleiste | macOS: Widgets |
+|---|---|---|
+| ![](docs/bilder/plasma-schreibtisch.png) | ![](docs/bilder/mac-karten.png) | ![](docs/bilder/mac-widgets.png) |
+
 ## Funktionen
 
 - **„3 Briefe unterwegs“** auf einen Blick – die Umschläge als Karten durchblättern (wischen, Mausrad, Pfeile oder

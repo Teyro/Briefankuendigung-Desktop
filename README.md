@@ -7,6 +7,12 @@ letter is in your mailbox – with the picture of the envelope.
 
 *Deutsch: siehe [README.de.md](README.de.md)*
 
+## Screenshots
+
+| Plasma desktop tiles | macOS menu bar | macOS widgets |
+|---|---|---|
+| ![](docs/bilder/plasma-schreibtisch.png) | ![](docs/bilder/mac-karten.png) | ![](docs/bilder/mac-widgets.png) |
+
 ## Features
 
 - **“3 letters on the way”** at a glance – flip through the envelopes as cards (swipe, mouse wheel, arrows,

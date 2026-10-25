@@ -73,11 +73,13 @@ struct PostKopf: View {
                 Text(kern.ha.post != nil ? PostText.titel(g.offen) : T("Briefankündigung"))
                     .font(.headline)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .contentTransition(.numericText())
                 Text(unterzeile(g))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             Spacer(minLength: 4)
             GlasGruppe(abstand: 6) {
@@ -171,7 +173,7 @@ struct PostHinweise: View {
                 Spacer()
                 Button(T("Ansehen")) { oeffnen("neuigkeiten") }.glasKnopf().controlSize(.small)
             }
-            .karte(farbe: .accentColor, eckradius: 12)
+            .karte(farbe: .accentColor.opacity(0.35), eckradius: 12)
         }
     }
 }
