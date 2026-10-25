@@ -476,6 +476,15 @@ struct BriefZeile: View {
     let umschalten: () -> Void
     @State private var ueber = false
 
+    /// „angekündigt … · Sendung … · Konto“
+    private var details: String {
+        var teile = [T("angekündigt %1", brief.datum.formatted(date: .abbreviated, time: .shortened))]
+        if !brief.sendung.isEmpty { teile.append(T("Sendung %1", brief.sendung)) }
+        let konto = brief.kundenkonto.isEmpty ? brief.kontoName : brief.kundenkonto
+        if !konto.isEmpty { teile.append(konto) }
+        return teile.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -505,9 +514,7 @@ struct BriefZeile: View {
                     Text(brief.statusText).font(.callout).fixedSize(horizontal: false, vertical: true)
                 }
                 HStack(alignment: .firstTextBaseline) {
-                    Text(T("angekündigt %1", brief.datum.formatted(date: .abbreviated, time: .shortened))
-                         + (brief.sendung.isEmpty ? "" : " · " + T("Sendung %1", brief.sendung))
-                         + (!brief.kundenkonto.isEmpty ? " · " + brief.kundenkonto : brief.kontoName.isEmpty ? "" : " · " + brief.kontoName))
+                    Text(details)
                         .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                     Spacer(minLength: 4)
                     if brief.manuell {
