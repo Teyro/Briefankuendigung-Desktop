@@ -20,6 +20,8 @@ KCM.SimpleKCM {
     property alias cfg_adresse: adresse.text
     property alias cfg_token: token.text
     property string cfg_konto
+    property string cfg_inhalt
+    property string cfg_inhaltDefault
     property alias cfg_minuten: minuten.value
     property string cfg_modusKachel
     property string cfg_modusPopup
@@ -136,6 +138,20 @@ KCM.SimpleKCM {
             model: namen.map(n => n === "" ? i18n("Alle Postfächer") : n)
             currentIndex: Math.max(0, namen.indexOf(seite.cfg_konto))
             onActivated: (i) => seite.cfg_konto = namen[i]
+        }
+        QQC2.ComboBox {
+            Kirigami.FormData.label: i18n("Inhalt:")
+            readonly property var werte: ["alles", "briefe", "pakete"]
+            model: [i18n("Briefe und Pakete (mit Reitern)"), i18n("Nur Briefe"), i18n("Nur Pakete (DHL, Hermes, DPD, Amazon)")]
+            currentIndex: Math.max(0, werte.indexOf(seite.cfg_inhalt))
+            onActivated: (i) => seite.cfg_inhalt = werte[i]
+        }
+        QQC2.Label {
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 22
+            text: i18n("Tipp: zwei Kacheln anlegen – eine für Briefe, eine für Pakete.")
+            wrapMode: Text.Wrap
+            font: Kirigami.Theme.smallFont
+            color: Kirigami.Theme.disabledTextColor
         }
         QQC2.ComboBox {
             Kirigami.FormData.label: i18n("Auf dem Schreibtisch:")

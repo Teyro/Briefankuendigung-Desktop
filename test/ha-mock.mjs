@@ -33,6 +33,7 @@ function umschlagPNG(b = 480, h = 300, n = 0) {
 }
 
 const jetzt = Date.now();
+const tag = (n) => { const d = new Date(Date.now() + n * 86400e3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const heute = new Date(); heute.setHours(7, 40, 0, 0);
 const POST = {
   erledigt: new Set(), stand: jetzt - 2 * 3600e3, abrufe: 0,
@@ -41,9 +42,16 @@ const POST = {
     { id: 'b'.repeat(20), datum: Math.min(jetzt - 120e3, heute.getTime() - 600e3), absender: 'AOK Nordwest', art: 'brief', bild: true, konto: 'e1', konto_name: 'Christian' },
     { id: 'f'.repeat(20), datum: Math.min(jetzt - 180e3, heute.getTime() - 900e3), absender: 'Sparkasse Holstein', art: 'brief', bild: true, konto: 'e2', konto_name: 'Johanna' },
     { id: 'c'.repeat(20), datum: jetzt - 26 * 3600e3, absender: 'Thalia Bücher GmbH', art: 'paket', bild: false, sendung: '00340434161094015902', stand: 'heute', konto: 'e1', konto_name: 'Christian',
+      dienst: 'dhl', dienst_name: 'DHL', erwartet: tag(0), zeitfenster: '10:00–13:00', verfolgen: 'https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=00340434161094015902',
       verlauf: [{ stand: 'unterwegs', datum: jetzt - 50 * 3600e3 }, { stand: 'heute', datum: jetzt - 26 * 3600e3 }] },
     { id: 'd'.repeat(20), datum: jetzt - 50 * 3600e3, absender: 'Stadtwerke Hamburg', art: 'brief', bild: false, konto: 'e1', konto_name: 'Christian' },
-    { id: 'e'.repeat(20), datum: jetzt - 74 * 3600e3, absender: 'Zalando SE', art: 'paket', bild: false, sendung: '1234567890123', stand: 'zugestellt', konto: 'e1', konto_name: 'Christian' },
+    { id: 'e'.repeat(20), datum: jetzt - 74 * 3600e3, absender: 'Zalando SE', art: 'paket', bild: false, sendung: '01234567890123', stand: 'zugestellt', konto: 'e1', konto_name: 'Christian', dienst: 'dpd', dienst_name: 'DPD', verfolgen: 'https://tracking.dpd.de/status/de_DE/parcel/01234567890123' },
+    { id: '1'.repeat(20), datum: jetzt - 5 * 3600e3, absender: 'OTTO GmbH & Co KG', art: 'paket', bild: false, sendung: 'H1002345678901234567', stand: 'unterwegs', konto: 'e1', konto_name: 'Christian',
+      dienst: 'hermes', dienst_name: 'Hermes', erwartet: tag(2), zeitfenster: '10:00–13:00', verfolgen: 'https://www.myhermes.de/empfangen/sendungsverfolgung/sendungsinformation#H1002345678901234567' },
+    { id: '2'.repeat(20), datum: jetzt - 20 * 3600e3, absender: 'Kindle Paperwhite (16 GB)', art: 'paket', bild: false, sendung: 'TBA301234567890', stand: 'unterwegs', konto: 'e1', konto_name: 'Christian',
+      dienst: 'amazon', dienst_name: 'Amazon', erwartet: tag(1), kundenkonto: 'Johanna', verfolgen: 'https://track.amazon.de/tracking/TBA301234567890' },
+    { id: '3'.repeat(20), datum: jetzt - 2 * 3600e3, absender: 'Kaffeebohnen 1 kg', art: 'paket', bild: false, sendung: 'TBA309999999999', stand: 'abholbereit', konto: 'e1', konto_name: 'Christian',
+      dienst: 'amazon', dienst_name: 'Amazon', kundenkonto: 'Christian', status_text: 'Liegt im Amazon Locker Bahnhof zur Abholung bereit', verfolgen: 'https://track.amazon.de/tracking/TBA309999999999' },
   ],
 };
 const KONTEN = [
@@ -93,6 +101,21 @@ const server = http.createServer((req, res) => {
       const d = JSON.parse(body || '{}');
       if (!POST.briefe.some((b) => b.id === d.id)) return json({ message: 'Brief nicht gefunden' }, 404);
       if (d.erledigt) POST.erledigt.add(d.id); else POST.erledigt.delete(d.id);
+      return json(d);
+    }
+    if (p === 'sendung' && req.method === 'POST') {
+      const d = JSON.parse(body || '{}');
+      const nr = String(d.nummer || '').toUpperCase();
+      const dienst = d.dienst || (/^TBA/.test(nr) ? 'amazon' : /^(00\d{18}|JJD)/.test(nr) ? 'dhl' : '');
+      if (!nr || !dienst) return json({ message: 'Paketdienst nicht erkannt' }, 400);
+      const b = { id: 'm' + nr.toLowerCase().replace(/[^a-z0-9]/g, '').padEnd(19, '0').slice(0, 19), datum: Date.now(), absender: d.name || '', art: 'paket', bild: false, sendung: nr,
+        stand: 'unterwegs', dienst, dienst_name: { dhl: 'DHL', hermes: 'Hermes', dpd: 'DPD', amazon: 'Amazon' }[dienst], manuell: true, konto: 'e1', konto_name: 'Christian' };
+      POST.briefe.unshift(b);
+      return json(b);
+    }
+    if (p === 'sendung/entfernen' && req.method === 'POST') {
+      const d = JSON.parse(body || '{}');
+      POST.briefe = POST.briefe.filter((b) => b.id !== d.id || !b.manuell);
       return json(d);
     }
     if (p === 'abrufen' && req.method === 'POST') { POST.abrufe++; POST.stand = Date.now(); return json({ gestartet: 1 }, 202); }

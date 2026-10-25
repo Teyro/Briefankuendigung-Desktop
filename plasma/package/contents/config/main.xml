@@ -8,6 +8,7 @@
     <entry name="token" type="String"><default></default></entry>
     <entry name="konto" type="String"><default></default></entry>
     <entry name="minuten" type="Int"><default>10</default></entry>
+    <entry name="inhalt" type="String"><default>alles</default></entry>
     <entry name="modusKachel" type="String"><default>karten</default></entry>
     <entry name="modusPopup" type="String"><default>liste</default></entry>
     <entry name="automatisch" type="Bool"><default>true</default></entry>

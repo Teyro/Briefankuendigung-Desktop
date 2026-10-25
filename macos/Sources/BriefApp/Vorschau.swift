@@ -38,6 +38,18 @@ enum Vorschau {
             kern.ha.abhaken(String(repeating: "b", count: 20), false)
             kern.einstellungen.modus = "karten"
 
+            // Pakete: Karten, Liste, Formular „Sendung verfolgen“
+            kern.bereich = "pakete"
+            await warte(1.5)
+            foto(f, "3a_pakete")
+            kern.einstellungen.modus = "liste"
+            kern.formular = true
+            await warte(1.5)
+            foto(f, "3b_pakete_liste")
+            kern.formular = false
+            kern.einstellungen.modus = "karten"
+            kern.bereich = "briefe"
+
             let b = fensterMit(BriefeFenster(kern: kern).background(Hintergrund()), titel: T("Briefankündigung"), groesse: NSSize(width: 780, height: 620))
             b.setFrameOrigin(NSPoint(x: 480, y: 60))
             await warte(2)
@@ -54,6 +66,11 @@ enum Vorschau {
             await warte(2)
             foto(w, "5_widgets")
             w.orderOut(nil)
+            let pw = fensterMit(WidgetVorschau(daten: daten, pakete: true).background(Hintergrund()), titel: T("Pakete"), groesse: NSSize(width: 800, height: 640))
+            pw.setFrameOrigin(NSPoint(x: 480, y: 40))
+            await warte(2)
+            foto(pw, "5a_pakete_widgets")
+            pw.orderOut(nil)
 
             let e = fensterMit(EinstellungenAnsicht(kern: kern), titel: T("Briefankündigung – Einstellungen"), groesse: NSSize(width: 520, height: 600))
             e.setFrameOrigin(NSPoint(x: 480, y: 40))
@@ -107,18 +124,19 @@ enum Vorschau {
 /// Alle Widgets in ihren echten Größen (klein 170×170, mittel 364×170, groß 364×382)
 private struct WidgetVorschau: View {
     let daten: WidgetDaten
+    var pakete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 16) {
-                kachel(170, 170) { KleinesWidget(daten: daten) }
-                kachel(364, 170) { KartenWidget(daten: daten, index: 0, interaktiv: false) }
+                kachel(170, 170) { KleinesWidget(daten: daten, pakete: pakete) }
+                kachel(364, 170) { KartenWidget(daten: daten, pakete: pakete, index: 0, interaktiv: false) }
             }
             HStack(alignment: .top, spacing: 16) {
-                kachel(364, 382) { ListenWidget(daten: daten) }
+                kachel(364, 382) { ListenWidget(daten: daten, pakete: pakete) }
                 VStack(spacing: 16) {
-                    kachel(364, 170) { KartenWidget(daten: daten, index: 3, interaktiv: false) }
-                    kachel(170, 170) { KleinesWidget(daten: WidgetDaten()) }
+                    kachel(364, 170) { KartenWidget(daten: daten, pakete: pakete, index: pakete ? 1 : 3, interaktiv: false) }
+                    kachel(170, 170) { KleinesWidget(daten: WidgetDaten(), pakete: pakete) }
                 }
             }
         }

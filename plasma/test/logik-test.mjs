@@ -51,3 +51,24 @@ rel[0].assets[0].browser_download_url = 'https://boese.example/x.plasmoid';
 assert.equal(L.updateAusReleases(rel, '1.0.0', 'briefankuendigung.plasmoid').url, '');
 assert.equal(L.updateAusReleases(rel, '1.2.0', 'briefankuendigung.plasmoid'), null);
 console.log('logik.js: alle Prüfungen bestanden');
+
+// 1.1: Pakete
+const pj = new Date(2026, 9, 21, 9, 0).getTime();
+const pk = [
+  { id: 'p1', art: 'paket', dienst: 'hermes', absender: 'OTTO', datum: pj - 3600e3, stand: 'unterwegs', erwartet: '2026-10-23', zeitfenster: '10:00–13:00' },
+  { id: 'p2', art: 'paket', dienst: 'dpd', absender: 'Zalando', datum: pj - 7200e3, stand: 'heute', erwartet: '2026-10-21' },
+  { id: 'p3', art: 'paket', dienst: 'amazon', absender: 'Kindle', datum: pj - 9000e3, stand: 'unterwegs', erwartet: '2026-10-22', kundenkonto: 'Johanna' },
+  { id: 'p4', art: 'paket', dienst: 'dhl', absender: 'Thalia', datum: pj - 86400e3, stand: 'zugestellt' },
+  { id: 'b1', art: 'brief', absender: 'AOK', datum: pj - 600e3 },
+];
+const pg = L.paketGruppen(pk, pj);
+eq(pg.heute.map((b) => b.id), ['p2']); eq(pg.unterwegs.map((b) => b.id), ['p3', 'p1']); eq(pg.angekommen.map((b) => b.id), ['p4']);
+assert.equal(L.erwartetText(pk[0], pj), 'voraussichtlich Fr 23.10., 10:00–13:00');
+assert.equal(L.erwartetText(pk[2], pj), 'kommt morgen');
+assert.equal(L.paketZeile(pk[2], pj, true), 'kommt morgen · Johanna');
+assert.equal(L.erwartetText({ stand: 'abholbereit' }, pj), 'zur Abholung bereit');
+assert.equal(L.nurArt(pk, 'briefe').length, 1); assert.equal(L.nurArt(pk, 'pakete').length, 4);
+assert.equal(L.dienst(pk[1]).name, 'DPD'); assert.equal(L.dienst({}).name, 'DHL');
+assert.equal(L.dienstVonNummer('TBA301234567890'), 'amazon'); assert.equal(L.dienstVonNummer('01234567890123'), '');
+assert.equal(L.paketTitel(pg.offen), '3 Pakete unterwegs');
+console.log('Pakete: alle Prüfungen bestanden');

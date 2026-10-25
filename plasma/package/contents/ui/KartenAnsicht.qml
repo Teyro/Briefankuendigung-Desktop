@@ -102,7 +102,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
                     Etikett {
-                        visible: Logik.gleicherTag(karte.b.datum, karten.jetzt) && !karte.erledigt
+                        visible: (karte.b.art === "paket" ? Logik.paketHeute(karte.b, karten.jetzt) : Logik.gleicherTag(karte.b.datum, karten.jetzt)) && !karte.erledigt
                         text: i18n("Heute")
                     }
                     Etikett {
@@ -129,11 +129,11 @@ ColumnLayout {
                         elide: Text.ElideRight
                     }
                     PC3.ToolButton {
-                        visible: !!karte.b.sendung
+                        visible: !!(karte.b.verfolgen || karte.b.sendung)
                         icon.name: "find-location"
                         text: i18n("Verfolgen")
                         display: PC3.AbstractButton.IconOnly
-                        onClicked: Qt.openUrlExternally(Logik.dhlAdresse(karte.b.sendung))
+                        onClicked: Qt.openUrlExternally(karte.b.verfolgen || Logik.dhlAdresse(karte.b.sendung))
                         PC3.ToolTip.text: text
                         PC3.ToolTip.visible: hovered
                         PC3.ToolTip.delay: Kirigami.Units.toolTipDelay

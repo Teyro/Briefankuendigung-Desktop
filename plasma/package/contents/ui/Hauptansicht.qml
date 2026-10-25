@@ -24,11 +24,18 @@ Item {
     property bool zeigeNeuigkeiten: false
     signal einrichten()
     signal modusGewechselt(string modus)
+    // "alles" (Reiter Briefe · Pakete), "briefe" oder "pakete" – so lässt sich eine eigene Pakete-Kachel anlegen
+    property string inhalt: "alles"
+    property string bereich: "briefe"
+    readonly property bool paketAnsicht: inhalt === "pakete" || (inhalt === "alles" && bereich === "pakete")
+    property bool formular: false
 
     property double jetzt: Date.now()
     Timer { interval: 60000; running: haupt.visible; repeat: true; onTriggered: haupt.jetzt = Date.now() }
 
-    readonly property var gruppen: Logik.gruppen(ha.briefe, jetzt)
+    readonly property var gruppen: paketAnsicht ? Logik.paketGruppen(ha.briefe, jetzt) : Logik.gruppen(Logik.nurArt(ha.briefe, inhalt === "briefe" || inhalt === "alles" ? "briefe" : "alles"), jetzt)
+    readonly property var paketGruppen: Logik.paketGruppen(ha.briefe, jetzt)
+    readonly property var briefGruppen: Logik.gruppen(Logik.nurArt(ha.briefe, "briefe"), jetzt)
     // Schmale oder flache Kachel: nur das Nötigste im Kopf
     readonly property bool eng: width < Kirigami.Units.gridUnit * 14
     readonly property bool flach: height < Kirigami.Units.gridUnit * 9
@@ -53,7 +60,7 @@ Item {
             Kirigami.Icon {
                 Layout.preferredWidth: haupt.eng ? Kirigami.Units.iconSizes.smallMedium : Kirigami.Units.iconSizes.medium
                 Layout.preferredHeight: Layout.preferredWidth
-                source: haupt.gruppen.heute.length ? "mail-unread-new" : haupt.gruppen.offen.length ? "mail-unread" : "mail-read"
+                source: haupt.paketAnsicht ? "package-x-generic" : haupt.gruppen.heute.length ? "mail-unread-new" : haupt.gruppen.offen.length ? "mail-unread" : "mail-read"
             }
             ColumnLayout {
                 Layout.fillWidth: true
@@ -61,7 +68,7 @@ Item {
                 Kirigami.Heading {
                     Layout.fillWidth: true
                     level: haupt.eng ? 4 : 3
-                    text: haupt.ha.post ? Logik.titel(haupt.gruppen.offen) : i18n("Briefankündigung")
+                    text: !haupt.ha.post ? i18n("Briefankündigung") : haupt.paketAnsicht ? Logik.paketTitel(haupt.gruppen.offen) : Logik.titel(haupt.gruppen.offen)
                     elide: Text.ElideRight
                     maximumLineCount: 1
                 }
@@ -109,6 +116,18 @@ Item {
                 }
             }
             PC3.ToolButton {
+                visible: haupt.paketAnsicht && !!haupt.ha.post
+                icon.name: "list-add"
+                text: i18n("Sendung hinzufügen")
+                display: PC3.AbstractButton.IconOnly
+                checkable: true
+                checked: haupt.formular
+                onClicked: haupt.formular = !haupt.formular
+                PC3.ToolTip.text: text
+                PC3.ToolTip.visible: hovered
+                PC3.ToolTip.delay: Kirigami.Units.toolTipDelay
+            }
+            PC3.ToolButton {
                 id: menueKnopf
                 icon.name: "overflow-menu"
                 text: i18n("Mehr")
@@ -152,6 +171,32 @@ Item {
                     onTriggered: haupt.einrichten()
                 }
             }
+        }
+
+        // Reiter Briefe · Pakete (nur bei Inhalt „alles“)
+        PC3.TabBar {
+            Layout.fillWidth: true
+            Layout.bottomMargin: Kirigami.Units.smallSpacing
+            visible: haupt.inhalt === "alles" && !!haupt.ha.post && !haupt.zeigeNeuigkeiten
+            currentIndex: haupt.bereich === "pakete" ? 1 : 0
+            PC3.TabButton {
+                text: haupt.briefGruppen.offen.length ? i18n("Briefe (%1)", haupt.briefGruppen.offen.length) : i18n("Briefe")
+                icon.name: "mail-message"
+                onClicked: haupt.bereich = "briefe"
+            }
+            PC3.TabButton {
+                text: haupt.paketGruppen.offen.length ? i18n("Pakete (%1)", haupt.paketGruppen.offen.length) : i18n("Pakete")
+                icon.name: "package-x-generic"
+                onClicked: haupt.bereich = "pakete"
+            }
+        }
+
+        SendungFormular {
+            Layout.fillWidth: true
+            Layout.bottomMargin: Kirigami.Units.smallSpacing
+            visible: haupt.formular && haupt.paketAnsicht && !haupt.zeigeNeuigkeiten
+            ha: haupt.ha
+            onFertig: haupt.formular = false
         }
 
         // Update verfügbar
@@ -243,8 +288,8 @@ Item {
             Hinweis {
                 anchors.fill: parent
                 visible: !haupt.zeigeNeuigkeiten && !!haupt.ha.post && haupt.modus === "karten" && haupt.gruppen.offen.length === 0
-                symbol: "mail-mark-read"
-                text: i18n("Keine Post unterwegs")
+                symbol: haupt.paketAnsicht ? "package-x-generic" : "mail-mark-read"
+                text: haupt.paketAnsicht ? i18n("Keine Pakete unterwegs") : i18n("Keine Post unterwegs")
                 erklaerung: !haupt.gruppen.angekommen.length ? ""
                     : i18n("Zuletzt: %1 (%2)", Logik.absender(haupt.gruppen.angekommen[0]), Logik.datum(haupt.gruppen.angekommen[0].datum, haupt.jetzt))
             }
@@ -254,6 +299,11 @@ Item {
                 visible: !haupt.zeigeNeuigkeiten && !!haupt.ha.post && haupt.modus === "liste"
                 ha: haupt.ha
                 jetzt: haupt.jetzt
+                gruppen: haupt.gruppen
+                angekommenText: haupt.paketAnsicht ? i18n("Zugestellt") : i18n("Angekommen")
+                leerText: haupt.paketAnsicht ? i18n("Keine Pakete") : i18n("Keine Post angekündigt")
+                leerErklaerung: haupt.paketAnsicht ? i18n("Pakete von DHL, Hermes, DPD und Amazon erscheinen hier, sobald eine Mail dazu kommt – oder über ＋ mit der Sendungsnummer.")
+                                                   : i18n("Sobald die Deutsche Post einen Brief ankündigt, erscheint er hier mit Bild des Umschlags.")
             }
         }
     }
