@@ -1,0 +1,6 @@
+macos/build/
+macos/*.xcodeproj/
+macos/.build/
+macos/ressourcen/AppIcon.icns
+macos/bilder-ci/
+node_modules/

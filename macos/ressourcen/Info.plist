@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>de</string>
+	<key>CFBundleLocalizations</key><array><string>de</string><string>en</string></array>
+	<key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key><string>de.teyro.briefankuendigung</string>
+	<key>CFBundleName</key><string>Briefankündigung</string>
+	<key>CFBundleDisplayName</key><string>Briefankündigung</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key><string>$(MARKETING_VERSION)</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+	<!-- Nur in der Menüleiste, kein Dock-Symbol -->
+	<key>LSUIElement</key><true/>
+	<key>NSHighResolutionCapable</key><true/>
+	<!-- Home Assistant läuft im Heimnetz oft ohne HTTPS (http://homeassistant.local:8123) -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key><true/>
+		<key>NSAllowsLocalNetworking</key><true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key><string>Briefankündigung verbindet sich mit Home Assistant in deinem Heimnetz.</string>
+	<key>NSHumanReadableCopyright</key><string>GPL-3.0-or-later · github.com/Teyro/Briefankuendigung-Desktop</string>
+</dict>
+</plist>

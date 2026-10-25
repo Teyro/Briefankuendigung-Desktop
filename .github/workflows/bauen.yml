@@ -1,0 +1,115 @@
+name: Bauen und testen
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  plasma:
+    name: Plasma-Widget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Logik testen
+        run: node plasma/test/logik-test.mjs
+
+      - name: Übersetzungen vollständig und aktuell?
+        run: |
+          node werkzeuge/texte.mjs --streng
+          node werkzeuge/baue-uebersetzungen.mjs
+          git add -N . && git diff --stat --exit-code -- i18n plasma/package/contents/locale macos/ressourcen
+
+      - name: Plasmoid packen
+        run: |
+          mkdir -p build
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF#refs/tags/v}"
+            node -e "const f='plasma/package/metadata.json';const m=require('./'+f);m.KPlugin.Version='$V';require('fs').writeFileSync(f,JSON.stringify(m,null,4)+'\n')"
+          fi
+          (cd plasma/package && zip -qr ../../build/briefankuendigung.plasmoid metadata.json contents)
+          unzip -l build/briefankuendigung.plasmoid | tail -1
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: plasmoid
+          path: build/briefankuendigung.plasmoid
+
+  macos:
+    name: Mac-App
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: macos
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Logik testen
+        run: swift test
+
+      - name: App bauen
+        run: |
+          VERSION=$(cat VERSION)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF#refs/tags/v}"; fi
+          ./scripts/baue-app.sh "$VERSION"
+
+      - name: Bildschirmfotos gegen nachgebautes Home Assistant
+        timeout-minutes: 6
+        run: |
+          HA_MOCK_LOG="$PWD/mock.log" node ../test/ha-mock.mjs 8123 > /dev/null 2>&1 &
+          sleep 2
+          for m in Light Dark; do
+            for s in de en; do
+              BA_ADRESSE=http://127.0.0.1:8123 BA_TOKEN=test-token BA_UPDATE_URL=http://127.0.0.1:8123/github/releases \
+              BA_BILDER="$PWD/bilder-ci/$s" build/Briefankuendigung.app/Contents/MacOS/Briefankuendigung --vorschau $m -AppleLanguages "($s)" || echo "Lauf $m $s: $?"
+            done
+          done
+          # Falscher Token: Fehleranzeige, und es darf nicht ständig weiter angefragt werden (ip_ban)
+          cp mock.log mock.log.vorher
+          BA_ADRESSE=http://127.0.0.1:8123 BA_TOKEN=falsch BA_NUR_ERSTES=9_falscher_token BA_BILDER="$PWD/bilder-ci/de" \
+            build/Briefankuendigung.app/Contents/MacOS/Briefankuendigung --vorschau Light -AppleLanguages "(de)" || true
+          N=$(( $(wc -l < mock.log) - $(wc -l < mock.log.vorher) ))
+          echo "Anfragen mit falschem Token: $N"
+          test "$N" -le 3
+          ls -la bilder-ci/*
+
+      - name: Widgets beim System angemeldet?
+        run: |
+          cp -R build/Briefankuendigung.app /Applications/
+          open /Applications/Briefankuendigung.app --args --nur-starten || true
+          sleep 8
+          pluginkit -mAvvv -p com.apple.widgetkit-extension 2>&1 | grep -i -A3 briefankuendigung || echo "WARNUNG: Widget-Erweiterung nicht gefunden"
+          pkill -f Briefankuendigung.app || true
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: bilder
+          path: macos/bilder-ci
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: app
+          path: macos/build/Briefankuendigung-macOS-*.zip
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [plasma, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: dateien
+          merge-multiple: true
+      - name: Dateien an das Release hängen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la dateien
+          gh release upload "$GITHUB_REF_NAME" dateien/briefankuendigung.plasmoid dateien/Briefankuendigung-macOS-*.zip --clobber -R "$GITHUB_REPOSITORY"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="adresse" type="String"><default></default></entry>
+    <entry name="token" type="String"><default></default></entry>
+    <entry name="konto" type="String"><default></default></entry>
+    <entry name="minuten" type="Int"><default>10</default></entry>
+    <entry name="modusKachel" type="String"><default>karten</default></entry>
+    <entry name="modusPopup" type="String"><default>liste</default></entry>
+    <entry name="automatisch" type="Bool"><default>true</default></entry>
+    <entry name="zeigeAnzahl" type="Bool"><default>true</default></entry>
+    <entry name="updatesSuchen" type="Bool"><default>true</default></entry>
+  </group>
+</kcfg>
