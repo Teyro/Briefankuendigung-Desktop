@@ -70,6 +70,9 @@ final class LogikTests: XCTestCase {
         XCTAssertEqual(w.offen.count + (w.zuletzt == nil ? 0 : 1) >= 3, true)
         let enc = JSONEncoder(); enc.dateEncodingStrategy = .secondsSince1970
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .secondsSince1970
-        XCTAssertEqual(try dec.decode(WidgetDaten.self, from: enc.encode(w)), w)
+        // über JSON hin und zurück (Datumswerte als Sekunden: Vergleich der Kodierung statt Gleitkomma)
+        let einmal = try enc.encode(w)
+        XCTAssertEqual(try enc.encode(dec.decode(WidgetDaten.self, from: einmal)), einmal)
+        XCTAssertEqual(try dec.decode(WidgetDaten.self, from: einmal).offen.map(\.id), w.offen.map(\.id))
     }
 }
