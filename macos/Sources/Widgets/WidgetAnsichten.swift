@@ -79,7 +79,7 @@ struct KleinesWidget: View {
     private var liste: [Brief] { daten.liste(pakete) }
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            WidgetKopf(daten: daten, pakete: pakete, kompakt: true)
+            WidgetKopf(daten: daten, kompakt: true, pakete: pakete)
             if let b = liste.first {
                 Umschlag(brief: b, bild: umschlagBild(b), eckradius: 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
