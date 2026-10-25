@@ -1,6 +1,6 @@
 # Briefankündigung – Desktop (Plasma 6 & macOS)
 
-**Letters and parcels announced by Deutsche Post and DHL – on your desktop.**
+**Letters announced by Deutsche Post and parcels from DHL, Hermes, DPD and Amazon – on your desktop.**
 A KDE Plasma 6 widget and a native macOS app (menu bar + desktop widgets) for the Home Assistant
 integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA): see who wrote to you before the
 letter is in your mailbox – with the picture of the envelope.
@@ -19,6 +19,9 @@ letter is in your mailbox – with the picture of the envelope.
   or automatically) or show them as a list: **Today · Still on the way · Arrived**
 - Envelope pictures from Deutsche Post, **DHL parcels** with progress (on the way → arriving today → delivered)
   and parcel tracking, **important senders** (tax office, court …) highlighted
+- **Parcels** from **DHL, Hermes, DPD and Amazon** in their own tab: expected delivery with time slot
+  (“arrives tomorrow, 10:00–13:00”), “ready for pickup”, carrier logo in its colours, the right tracking link,
+  the customer account for several Amazon accounts – and **add a shipment by its number** yourself
 - **“Arrived”** – mark a letter as received; it is synced through Home Assistant to all your devices
 - **“Check now”** – let Home Assistant read the mailbox immediately
 - Several mailboxes (e.g. yours and your partner’s) – show all or one
@@ -30,15 +33,17 @@ letter is in your mailbox – with the picture of the envelope.
   just an icon with the count on a small one
 - In the panel: icon with count (highlighted when something arrives today), list in the popup
 - Takes over the connection from **Home Assistant ToolBox** automatically if it is installed
+- Choose per tile what it shows: everything (with tabs), only letters, or **only parcels** – e.g. two tiles side by side
 
 ### macOS (14 Sonoma or later, Liquid Glass on macOS 26)
 - Menu bar app with cards and list, a window with all letters
 - **Desktop widgets** (small, medium, large) – flip through the letters and mark them as arrived right in the widget
+- A separate **Parcels widget** sorted by expected delivery
 - Token stored in the keychain; can take over the connection from Home Assistant ToolBox
 
 ## Requirements
 
-Home Assistant with the integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA) **1.3 or later**
+Home Assistant with the integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA) **1.3 or later** (parcels from Hermes, DPD, Amazon and adding shipments: **1.4**)
 (installed via HACS) and a long‑lived access token (your name at the bottom left → Security).
 
 ## Installation
