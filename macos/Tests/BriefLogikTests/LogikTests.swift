@@ -68,7 +68,7 @@ final class LogikTests: XCTestCase {
     func testWidgetDaten() throws {
         let w = WidgetDaten(post: beispiel(), eingerichtet: true, fehler: "", jetzt: Date())
         XCTAssertEqual(w.offen.count + (w.zuletzt == nil ? 0 : 1) >= 3, true)
-        let enc = JSONEncoder(); enc.dateEncodingStrategy = .secondsSince1970
+        let enc = JSONEncoder(); enc.dateEncodingStrategy = .secondsSince1970; enc.outputFormatting = .sortedKeys
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .secondsSince1970
         // über JSON hin und zurück (Datumswerte als Sekunden: Vergleich der Kodierung statt Gleitkomma)
         let einmal = try enc.encode(w)
