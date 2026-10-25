@@ -23,19 +23,24 @@ struct Umschlag: View {
                 // Paket ohne Bild: Fläche in der Farbe des Paketdienstes
                 let d = DienstFarben(brief.dienst)
                 d.hintergrund
-                VStack(spacing: 2) {
-                    Image(systemName: "shippingbox.fill")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: 34, maxHeight: 26)
-                        .symbolRenderingMode(.hierarchical)
-                    Text(brief.dienstName)
-                        .font(.system(size: 11, weight: .heavy))
-                        .italic(brief.dienst == "dhl")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                // Symbol und Name wachsen mit der Fläche (Zeile klein, Karte groß)
+                GeometryReader { g in
+                    let m = min(g.size.width, g.size.height * 1.4)
+                    VStack(spacing: m * 0.03) {
+                        Image(systemName: "shippingbox.fill")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: m * 0.3, height: m * 0.24)
+                            .symbolRenderingMode(.hierarchical)
+                        Text(brief.dienstName)
+                            .font(.system(size: max(9, m * 0.12), weight: .heavy))
+                            .italic(brief.dienst == "dhl")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
+                    .foregroundStyle(d.schrift)
+                    .frame(width: g.size.width, height: g.size.height)
                 }
-                .foregroundStyle(d.schrift)
                 .padding(4)
             } else {
                 LinearGradient(colors: brief.paket ? [Color(red: 0.84, green: 0.64, blue: 0.42), Color(red: 0.72, green: 0.52, blue: 0.3)]
