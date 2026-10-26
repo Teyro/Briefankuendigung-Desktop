@@ -12,6 +12,11 @@ enum WidgetSpeicher {
         get { UserDefaults.standard.integer(forKey: schluessel) }
         set { UserDefaults.standard.set(newValue, forKey: schluessel) }
     }
+    /// Das Pakete-Widget blättert für sich
+    static var paketIndex: Int {
+        get { UserDefaults.standard.integer(forKey: "paketkarte") }
+        set { UserDefaults.standard.set(newValue, forKey: "paketkarte") }
+    }
 }
 
 /// Zum nächsten bzw. vorigen Brief blättern
@@ -20,13 +25,18 @@ struct BlaetternAbsicht: AppIntent {
     static var isDiscoverable = false
 
     @Parameter(title: "Schritt") var schritt: Int
+    @Parameter(title: "Pakete", default: false) var pakete: Bool
 
     init() {}
-    init(_ schritt: Int) { self.schritt = schritt }
+    init(_ schritt: Int, pakete: Bool = false) { self.schritt = schritt; self.pakete = pakete }
 
     func perform() async throws -> some IntentResult {
-        let n = WidgetDaten.lesen()?.offen.count ?? 0
-        WidgetSpeicher.index = PostText.blaettern(WidgetSpeicher.index, schritt, n)
+        let d = WidgetDaten.lesen()
+        if pakete {
+            WidgetSpeicher.paketIndex = PostText.blaettern(WidgetSpeicher.paketIndex, schritt, d?.pakete.count ?? 0)
+        } else {
+            WidgetSpeicher.index = PostText.blaettern(WidgetSpeicher.index, schritt, d?.offen.count ?? 0)
+        }
         return .result()
     }
 }

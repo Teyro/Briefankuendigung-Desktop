@@ -17,7 +17,10 @@ PC3.ScrollView {
 
     required property var ha
     property double jetzt: Date.now()
-    readonly property var gruppen: Logik.gruppen(ha.briefe, jetzt)
+    property var gruppen: Logik.gruppen(ha.briefe, jetzt)
+    property string angekommenText: i18n("Angekommen")
+    property string leerText: i18n("Keine Post angekündigt")
+    property string leerErklaerung: i18n("Sobald die Deutsche Post einen Brief ankündigt, erscheint er hier mit Bild des Umschlags.")
 
     property bool heuteOffen: true
     property bool unterwegsOffen: true
@@ -60,7 +63,7 @@ PC3.ScrollView {
         KlappKopf {
             Layout.fillWidth: true
             visible: liste.gruppen.angekommen.length > 0
-            text: i18n("Angekommen")
+            text: liste.angekommenText
             anzahl: liste.gruppen.angekommen.length
             offen: liste.angekommenOffen
             onUmschalten: liste.angekommenOffen = !liste.angekommenOffen
@@ -73,10 +76,10 @@ PC3.ScrollView {
         PlasmaExtras.PlaceholderMessage {
             Layout.fillWidth: true
             Layout.margins: Kirigami.Units.gridUnit
-            visible: !!liste.ha.post && liste.ha.briefe.length === 0
+            visible: !!liste.ha.post && liste.gruppen.offen.length === 0 && liste.gruppen.angekommen.length === 0
             iconName: "mail-mark-read"
-            text: i18n("Keine Post angekündigt")
-            explanation: i18n("Sobald die Deutsche Post einen Brief ankündigt, erscheint er hier mit Bild des Umschlags.")
+            text: liste.leerText
+            explanation: liste.leerErklaerung
         }
     }
 

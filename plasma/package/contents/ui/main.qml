@@ -27,7 +27,10 @@ PlasmoidItem {
         minuten: Plasmoid.configuration.minuten
     }
 
-    readonly property var gruppen: Logik.gruppen(verbindung.briefe, Date.now())
+    readonly property string inhalt: Plasmoid.configuration.inhalt
+    // Was das Symbol zählt: bei „nur Pakete“ die Pakete, sonst Briefe und Pakete
+    readonly property var gruppen: inhalt === "pakete" ? Logik.paketGruppen(verbindung.briefe, Date.now())
+                                                      : Logik.gruppen(Logik.nurArt(verbindung.briefe, inhalt), Date.now())
 
     // Gemeinsame Logik übersetzen (Platzhalter %1 … bleiben stehen, die Logik setzt sie ein)
     function uebersetze(text) {
@@ -62,11 +65,11 @@ PlasmoidItem {
         automatisch: Plasmoid.configuration.updatesSuchen
     }
 
-    Plasmoid.icon: root.gruppen.heute.length ? "mail-unread-new" : root.gruppen.offen.length ? "mail-unread" : "mail-read"
+    Plasmoid.icon: root.inhalt === "pakete" ? "package-x-generic" : root.gruppen.heute.length ? "mail-unread-new" : root.gruppen.offen.length ? "mail-unread" : "mail-read"
     Plasmoid.status: root.gruppen.offen.length ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
 
-    toolTipMainText: verbindung.post ? Logik.titel(root.gruppen.offen) : i18n("Briefankündigung")
+    toolTipMainText: !verbindung.post ? i18n("Briefankündigung") : root.inhalt === "pakete" ? Logik.paketTitel(root.gruppen.offen) : Logik.titel(root.gruppen.offen)
     toolTipSubText: {
         if (!verbindung.eingerichtet) return i18n("Noch nicht eingerichtet – Rechtsklick → Einrichten");
         if (verbindung.fehler) return verbindung.fehler;
@@ -84,6 +87,7 @@ PlasmoidItem {
         fehler: verbindung.fehler !== "" && !verbindung.post
         horizontal: Plasmoid.formFactor !== PlasmaCore.Types.Vertical
         aufDemSchreibtisch: root.aufDemSchreibtisch
+        paket: root.inhalt === "pakete"
         onGeklickt: root.expanded = !root.expanded
     }
 
@@ -93,6 +97,7 @@ PlasmoidItem {
         imPopup: !root.aufDemSchreibtisch || root.expanded
         modus: root.aufDemSchreibtisch && !root.expanded ? Plasmoid.configuration.modusKachel : Plasmoid.configuration.modusPopup
         automatisch: Plasmoid.configuration.automatisch
+        inhalt: root.inhalt
         onEinrichten: Plasmoid.internalAction("configure").trigger()
         onModusGewechselt: (m) => {
             if (root.aufDemSchreibtisch && !root.expanded) Plasmoid.configuration.modusKachel = m;

@@ -67,7 +67,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.smallSpacing
                     Etikett {
-                        visible: Logik.gleicherTag(zeile.brief.datum, zeile.jetzt) && !zeile.erledigt
+                        visible: (zeile.paket ? Logik.paketHeute(zeile.brief, zeile.jetzt) : Logik.gleicherTag(zeile.brief.datum, zeile.jetzt)) && !zeile.erledigt
                         text: i18n("Heute")
                         farbe: Kirigami.Theme.highlightColor
                     }
@@ -120,6 +120,12 @@ Item {
             bild: zeile.bild
             gross: true
         }
+        PC3.Label {
+            Layout.fillWidth: true
+            visible: zeile.aufgeklappt && !!zeile.brief.status_text
+            text: zeile.brief.status_text || ""
+            wrapMode: Text.Wrap
+        }
         RowLayout {
             Layout.fillWidth: true
             visible: zeile.aufgeklappt
@@ -128,16 +134,22 @@ Item {
                 Layout.fillWidth: true
                 text: i18n("angekündigt %1", new Date(zeile.brief.datum).toLocaleString(Qt.locale(), Locale.ShortFormat))
                       + (zeile.brief.sendung ? " · " + i18n("Sendung %1", zeile.brief.sendung) : "")
-                      + (zeile.brief.konto_name ? " · " + zeile.brief.konto_name : "")
+                      + (zeile.brief.kundenkonto ? " · " + zeile.brief.kundenkonto : zeile.brief.konto_name ? " · " + zeile.brief.konto_name : "")
                 font: Kirigami.Theme.smallFont
                 color: Kirigami.Theme.disabledTextColor
                 wrapMode: Text.Wrap
             }
             PC3.Button {
-                visible: !!zeile.brief.sendung
+                visible: !!zeile.brief.manuell
+                icon.name: "edit-delete"
+                text: i18n("Entfernen")
+                onClicked: zeile.ha.sendungEntfernen(zeile.brief.id)
+            }
+            PC3.Button {
+                visible: !!(zeile.brief.verfolgen || zeile.brief.sendung)
                 icon.name: "find-location"
                 text: i18n("Verfolgen")
-                onClicked: Qt.openUrlExternally(Logik.dhlAdresse(zeile.brief.sendung))
+                onClicked: Qt.openUrlExternally(zeile.brief.verfolgen || Logik.dhlAdresse(zeile.brief.sendung))
             }
         }
     }

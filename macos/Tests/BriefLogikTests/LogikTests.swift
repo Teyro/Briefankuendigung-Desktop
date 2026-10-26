@@ -76,3 +76,38 @@ final class LogikTests: XCTestCase {
         XCTAssertEqual(try dec.decode(WidgetDaten.self, from: einmal).offen.map(\.id), w.offen.map(\.id))
     }
 }
+
+final class PaketTests: XCTestCase {
+    let kal: Calendar = {
+        var k = Calendar(identifier: .gregorian)
+        k.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        return k
+    }()
+    lazy var jetzt = kal.date(from: DateComponents(year: 2026, month: 10, day: 21, hour: 9))!
+
+    func testPakete() {
+        let ms = { (d: Date) -> JSON in .zahl(d.timeIntervalSince1970 * 1000) }
+        let j: JSON = ["briefe": [
+            ["id": "p1", "datum": ms(jetzt), "art": "paket", "absender": "OTTO", "dienst": "hermes", "erwartet": "2026-10-23", "zeitfenster": "10:00–13:00",
+             "verfolgen": "https://www.myhermes.de/x"],
+            ["id": "p2", "datum": ms(jetzt), "art": "paket", "absender": "Zalando", "dienst": "dpd", "stand": "heute"],
+            ["id": "p3", "datum": ms(jetzt), "art": "paket", "absender": "Kindle", "dienst": "amazon", "erwartet": "2026-10-22", "kundenkonto": "Johanna", "manuell": true],
+            ["id": "p4", "datum": ms(jetzt), "art": "paket", "absender": "Alt", "stand": "zugestellt"],
+            ["id": "b1", "datum": ms(jetzt), "art": "brief", "absender": "AOK"],
+        ]]
+        let p = Post.aus(j)!
+        let g = Gruppen.pakete(p.briefe, jetzt: jetzt, kalender: kal)
+        XCTAssertEqual(g.heute.map(\.id), ["p2"])
+        XCTAssertEqual(g.unterwegs.map(\.id), ["p3", "p1"])
+        XCTAssertEqual(g.angekommen.map(\.id), ["p4"])
+        let otto = p.briefe[0], kindle = p.briefe[2]
+        XCTAssertEqual(PostText.erwartet(otto, jetzt: jetzt, kalender: kal), "voraussichtlich Fr 23.10., 10:00–13:00")
+        XCTAssertEqual(PostText.paketZeile(kindle, jetzt: jetzt, kalender: kal), "kommt morgen · Johanna")
+        XCTAssertEqual(otto.verfolgenURL?.host, "www.myhermes.de")
+        XCTAssertTrue(kindle.manuell)
+        XCTAssertEqual(p.briefe[3].dienstName, "DHL")
+        XCTAssertEqual(PostText.dienstVonNummer("TBA301234567890"), "amazon")
+        XCTAssertEqual(PostText.dienstVonNummer("01234567890123"), "")
+        XCTAssertEqual(PostText.paketTitel(g.heute + g.unterwegs), "3 Pakete unterwegs")
+    }
+}

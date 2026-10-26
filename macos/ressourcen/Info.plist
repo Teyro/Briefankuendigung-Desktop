@@ -24,6 +24,12 @@
 		<key>NSAllowsLocalNetworking</key><true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key><string>Briefankündigung verbindet sich mit Home Assistant in deinem Heimnetz.</string>
+	<!-- Klick auf das Pakete-Widget: briefankuendigung://pakete -->
+	<key>CFBundleURLTypes</key>
+	<array><dict>
+		<key>CFBundleURLName</key><string>de.teyro.briefankuendigung</string>
+		<key>CFBundleURLSchemes</key><array><string>briefankuendigung</string></array>
+	</dict></array>
 	<key>NSHumanReadableCopyright</key><string>GPL-3.0-or-later · github.com/Teyro/Briefankuendigung-Desktop</string>
 </dict>
 </plist>

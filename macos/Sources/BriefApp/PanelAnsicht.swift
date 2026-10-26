@@ -11,10 +11,11 @@ struct PanelAnsicht: View {
             PostKopf(kern: kern, oeffnen: oeffnen, mitModus: true)
             PostHinweise(kern: kern, oeffnen: oeffnen)
             if kern.ha.post != nil {
-                if kern.einstellungen.modus == "liste" || kern.gruppen.offen.isEmpty {
+                BereichWahl(kern: kern)
+                if kern.einstellungen.modus == "liste" || kern.ansicht.offen.isEmpty {
                     BriefListe(kern: kern)
                 } else {
-                    KartenBand(kern: kern, briefe: kern.gruppen.offen)
+                    KartenBand(kern: kern, briefe: kern.ansicht.offen)
                 }
             } else {
                 Spacer(minLength: 0)
@@ -35,9 +36,10 @@ struct BriefeFenster: View {
             PostKopf(kern: kern, oeffnen: { openWindow(id: $0) }, mitModus: false)
             PostHinweise(kern: kern, oeffnen: { openWindow(id: $0) })
             if kern.ha.post != nil {
+                BereichWahl(kern: kern)
                 HStack(alignment: .top, spacing: 16) {
-                    if !kern.gruppen.offen.isEmpty {
-                        KartenBand(kern: kern, briefe: kern.gruppen.offen)
+                    if !kern.ansicht.offen.isEmpty {
+                        KartenBand(kern: kern, briefe: kern.ansicht.offen)
                             .frame(minWidth: 320, idealWidth: 400, maxWidth: 520)
                     }
                     BriefListe(kern: kern)
@@ -52,6 +54,98 @@ struct BriefeFenster: View {
     }
 }
 
+/// „Briefe | Pakete“ (nur wenn es Pakete gibt) und das Formular „Sendung verfolgen“
+struct BereichWahl: View {
+    @Bindable var kern: Kern
+
+    var body: some View {
+        if kern.mitPaketen || kern.formular {
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Picker("", selection: $kern.bereich) {
+                        Text(zahl(T("Briefe"), kern.briefGruppen.offen.count)).tag("briefe")
+                        Text(zahl(T("Pakete"), kern.paketGruppen.offen.count)).tag("pakete")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    Button {
+                        withAnimation(.snappy) { kern.formular.toggle(); if kern.formular { kern.bereich = "pakete" } }
+                    } label: {
+                        Image(systemName: kern.formular ? "xmark" : "plus").frame(width: 14, height: 14)
+                    }
+                    .help(T("Sendung hinzufügen"))
+                    .glasKnopf()
+                }
+                if kern.formular {
+                    SendungFormular(kern: kern) { withAnimation(.snappy) { kern.formular = false } }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+    }
+
+    private func zahl(_ text: String, _ n: Int) -> String { n > 0 ? "\(text) (\(n))" : text }
+}
+
+/// Sendung von Hand hinzufügen: Nummer, Paketdienst (oder erkennen), Name
+struct SendungFormular: View {
+    let kern: Kern
+    let fertig: () -> Void
+    @State private var nummer = ""
+    @State private var dienst = ""
+    @State private var name = ""
+    @State private var fehler = ""
+    @State private var laeuft = false
+
+    private var erkannt: String { PostText.dienstVonNummer(nummer) }
+    private var gewaehlt: String { dienst.isEmpty ? erkannt : dienst }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(T("Sendung verfolgen")).font(.headline)
+            HStack(spacing: 8) {
+                TextField(T("Sendungs- oder Bestellnummer"), text: $nummer)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(senden)
+                Picker("", selection: $dienst) {
+                    Text(erkannt.isEmpty ? T("Paketdienst …") : T("Automatisch (%1)", PostText.dienstName(erkannt))).tag("")
+                    ForEach(["dhl", "hermes", "dpd", "amazon"], id: \.self) { Text(PostText.dienstName($0)).tag($0) }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            HStack(spacing: 8) {
+                TextField(T("Name, z. B. „Neue Schuhe“ (optional)"), text: $name)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(senden)
+                Button(T("Hinzufügen"), action: senden)
+                    .glasKnopfBetont()
+                    .disabled(nummer.trimmingCharacters(in: .whitespaces).isEmpty || gewaehlt.isEmpty || laeuft)
+            }
+            if !fehler.isEmpty || (!nummer.isEmpty && gewaehlt.isEmpty) {
+                Text(fehler.isEmpty ? T("Bitte den Paketdienst wählen – die Nummer passt zu mehreren.") : fehler)
+                    .font(.caption)
+                    .foregroundStyle(fehler.isEmpty ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.red))
+            }
+        }
+        .padding(12)
+        .glas(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func senden() {
+        let n = nummer.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty, !gewaehlt.isEmpty, !laeuft else { return }
+        laeuft = true
+        fehler = ""
+        Task {
+            let text = await kern.ha.sendungHinzufuegen(nummer: n, dienst: gewaehlt, name: name.trimmingCharacters(in: .whitespaces))
+            laeuft = false
+            fehler = text
+            if text.isEmpty { nummer = ""; name = ""; dienst = ""; fertig() }
+        }
+    }
+}
+
 /// Kopf: Symbol, Anzahl, Stand; Karten/Liste, Nachsehen, Menü
 struct PostKopf: View {
     let kern: Kern
@@ -59,18 +153,18 @@ struct PostKopf: View {
     var mitModus: Bool
 
     var body: some View {
-        let g = kern.gruppen
+        let g = kern.ansicht
         HStack(spacing: 10) {
             ZStack {
                 Circle().fill(Color.accentColor.gradient)
-                Image(systemName: g.heute.isEmpty ? "envelope.fill" : "envelope.badge.fill")
+                Image(systemName: kern.paketAnsicht ? "shippingbox.fill" : g.heute.isEmpty ? "envelope.fill" : "envelope.badge.fill")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .symbolRenderingMode(.hierarchical)
             }
             .frame(width: 34, height: 34)
             VStack(alignment: .leading, spacing: 1) {
-                Text(kern.ha.post != nil ? PostText.titel(g.offen) : T("Briefankündigung"))
+                Text(kern.ha.post == nil ? T("Briefankündigung") : kern.paketAnsicht ? PostText.paketTitel(g.offen) : PostText.titel(g.offen))
                     .font(.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -107,6 +201,8 @@ struct PostKopf: View {
                     }
                     Menu {
                         Button(T("Alle Briefe im Fenster …")) { oeffnen("briefe") }
+                        Button(T("Sendung hinzufügen …")) { withAnimation(.snappy) { kern.formular = true; kern.bereich = "pakete" } }
+                            .disabled(kern.ha.post == nil)
                         Button(T("Einstellungen …")) { oeffnen("einstellungen") }
                         Divider()
                         Button(kern.aktualisierer.neueVersion.map { T("Update auf %1 …", $0) } ?? T("Was ist neu?")) {
@@ -305,7 +401,7 @@ struct AktionsKnoepfe: View {
     let brief: Brief
     var body: some View {
         HStack(spacing: 6) {
-            if !brief.sendung.isEmpty, let u = PostText.dhl(brief.sendung) {
+            if brief.paket, let u = brief.verfolgenURL {
                 Button { NSWorkspace.shared.open(u) } label: { Image(systemName: "location.magnifyingglass") }
                     .help(T("Verfolgen")).glasKnopf()
             }
@@ -334,7 +430,8 @@ struct BriefListe: View {
     @State private var offen: String?
 
     var body: some View {
-        let g = kern.gruppen
+        let g = kern.ansicht
+        let pakete = kern.paketAnsicht
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 4) {
                 if !g.heute.isEmpty {
@@ -342,14 +439,19 @@ struct BriefListe: View {
                     if heuteOffen { ForEach(g.heute) { zeile($0) } }
                 }
                 if !g.unterwegs.isEmpty {
-                    Abschnitt(titel: T("Noch unterwegs"), anzahl: g.unterwegs.count, offen: $unterwegsOffen)
+                    Abschnitt(titel: pakete ? T("Unterwegs") : T("Noch unterwegs"), anzahl: g.unterwegs.count, offen: $unterwegsOffen)
                     if unterwegsOffen { ForEach(g.unterwegs) { zeile($0) } }
                 }
                 if !g.angekommen.isEmpty {
-                    Abschnitt(titel: T("Angekommen"), anzahl: g.angekommen.count, offen: $angekommenOffen)
+                    Abschnitt(titel: pakete ? T("Zugestellt") : T("Angekommen"), anzahl: g.angekommen.count, offen: $angekommenOffen)
                     if angekommenOffen { ForEach(g.angekommen) { zeile($0) } }
                 }
-                if g.offen.isEmpty && g.angekommen.isEmpty {
+                if g.offen.isEmpty && g.angekommen.isEmpty && pakete {
+                    Hinweis(symbol: "shippingbox", titel: T("Keine Pakete unterwegs"),
+                            text: T("Pakete von DHL, Hermes, DPD und Amazon erscheinen hier, sobald eine Mail dazu kommt – oder über ＋ mit der Sendungsnummer."),
+                            knopf: T("Jetzt nachsehen")) { kern.ha.jetztNachsehen() }
+                        .frame(minHeight: 300)
+                } else if g.offen.isEmpty && g.angekommen.isEmpty {
                     Hinweis(symbol: "tray", titel: T("Keine Post angekündigt"),
                             text: T("Sobald die Deutsche Post einen Brief ankündigt, erscheint er hier mit Bild des Umschlags."),
                             knopf: T("Jetzt nachsehen")) { kern.ha.jetztNachsehen() }
@@ -373,6 +475,15 @@ struct BriefZeile: View {
     let aufgeklappt: Bool
     let umschalten: () -> Void
     @State private var ueber = false
+
+    /// „angekündigt … · Sendung … · Konto“
+    private var details: String {
+        var teile = [T("angekündigt %1", brief.datum.formatted(date: .abbreviated, time: .shortened))]
+        if !brief.sendung.isEmpty { teile.append(T("Sendung %1", brief.sendung)) }
+        let konto = brief.kundenkonto.isEmpty ? brief.kontoName : brief.kundenkonto
+        if !konto.isEmpty { teile.append(konto) }
+        return teile.joined(separator: " · ")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -399,10 +510,18 @@ struct BriefZeile: View {
                         .frame(height: 190)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                Text(T("angekündigt %1", brief.datum.formatted(date: .abbreviated, time: .shortened))
-                     + (brief.sendung.isEmpty ? "" : " · " + T("Sendung %1", brief.sendung))
-                     + (brief.kontoName.isEmpty ? "" : " · " + brief.kontoName))
-                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                if !brief.statusText.isEmpty {
+                    Text(brief.statusText).font(.callout).fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(details)
+                        .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    Spacer(minLength: 4)
+                    if brief.manuell {
+                        Button(T("Entfernen"), systemImage: "trash") { withAnimation(.snappy) { kern.ha.sendungEntfernen(brief.id) } }
+                            .controlSize(.small).glasKnopf()
+                    }
+                }
             }
         }
         .padding(8)

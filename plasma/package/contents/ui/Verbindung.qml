@@ -103,6 +103,26 @@ Item {
         });
     }
 
+    /** Sendung von Hand verfolgen (Nummer, Dienst "" = erkennen, Name); fertig(fehlertext oder "") */
+    function sendungHinzufuegen(nummer, dienst, name, fertig) {
+        anfrage("POST", "/api/briefankuendigung/sendung", { nummer: nummer, dienst: dienst, name: name, konto: konto }, function (antwort, text, status) {
+            if (status === 400) text = i18n("Sendungsnummer oder Paketdienst nicht erkannt.");
+            else if (status === 404 || status === 405) text = i18n("Dafür die Integration auf Version 1.4 aktualisieren.");
+            if (!text) laden();
+            fertig(text || "");
+        });
+    }
+
+    /** Von Hand hinzugefügte Sendung entfernen (Sendungen aus Mails gelten danach als angekommen) */
+    function sendungEntfernen(id) {
+        if (post) {
+            const neu = Object.assign({}, post);
+            neu.briefe = post.briefe.filter(b => b.id !== id || !b.manuell);
+            post = neu;
+        }
+        anfrage("POST", "/api/briefankuendigung/sendung/entfernen", { id: id }, function (antwort, text) { if (text) meldung(text); laden(); });
+    }
+
     /** Home Assistant jetzt ins Postfach schauen lassen und ein paar Mal nachladen */
     property double nachsehenSeit: 0
     function jetztNachsehen() {

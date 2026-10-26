@@ -18,6 +18,7 @@ MouseArea {
     property bool fehler: false
     property bool horizontal: true
     property bool aufDemSchreibtisch: false
+    property bool paket: false
     readonly property int symbolGroesse: aufDemSchreibtisch
         ? Math.min(width, height) * 0.7
         : Math.min(Kirigami.Units.iconSizes.smallMedium, Math.min(width, height))
@@ -37,7 +38,7 @@ MouseArea {
         anchors.centerIn: parent
         width: kompakt.symbolGroesse
         height: width
-        source: kompakt.heute > 0 ? "mail-unread-new" : kompakt.anzahl > 0 ? "mail-unread" : "mail-read"
+        source: kompakt.paket ? "package-x-generic" : kompakt.heute > 0 ? "mail-unread-new" : kompakt.anzahl > 0 ? "mail-unread" : "mail-read"
         active: kompakt.containsMouse
         opacity: kompakt.fehler ? 0.5 : 1
     }

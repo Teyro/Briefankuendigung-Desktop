@@ -67,6 +67,7 @@ function datum(ms, jetzt) {
 
 /** Zeile unter dem Absender: „angekündigt heute“, „kommt heute“, „zugestellt“ (+ Postfach) */
 function unterzeile(b, jetzt, mitKonto) {
+    if (b.art === "paket" && (b.dienst || b.erwartet || b.kundenkonto)) return paketZeile(b, jetzt, mitKonto);
     var teile = [];
     if (b.art === "paket" && b.stand === "zugestellt") teile.push(t("zugestellt"));
     else if (b.art === "paket" && b.stand === "heute") teile.push(t("kommt heute"));
@@ -79,7 +80,7 @@ function unterzeile(b, jetzt, mitKonto) {
 function absender(b) { return b.absender || (b.art === "paket" ? t("Paket") : t("Absender unbekannt")); }
 
 /** Stand eines Pakets als Stufe 1–3 (unterwegs, kommt heute, zugestellt) */
-function paketStufe(b) { return b.stand === "zugestellt" ? 3 : b.stand === "heute" ? 2 : 1; }
+function paketStufe(b) { return b.stand === "zugestellt" ? 3 : b.stand === "heute" || b.stand === "abholbereit" ? 2 : 1; }
 
 /** „vor 5 min“, „vor 3 h“ */
 function vor(ms, jetzt) {
@@ -169,4 +170,80 @@ function updateAusReleases(releases, aktuell, dateiname) {
         seite: seite,
         notizen: neuer.map(function (r) { return { version: r.tag_name.replace(/^v/, ""), titel: r.name || r.tag_name, text: r.body || "" }; })
     };
+}
+
+// ------------------------------------------------------------------ Pakete (DHL, Hermes, DPD, Amazon)
+var DIENSTE = {
+    dhl: { name: "DHL", farbe: "#FFCC00", schrift: "#D40511" },
+    hermes: { name: "Hermes", farbe: "#0091CD", schrift: "#FFFFFF" },
+    dpd: { name: "DPD", farbe: "#DC0032", schrift: "#FFFFFF" },
+    amazon: { name: "Amazon", farbe: "#232F3E", schrift: "#FF9900" }
+};
+function dienst(b) { return DIENSTE[b.dienst || "dhl"] || { name: b.dienst_name || b.dienst || "", farbe: "#777777", schrift: "#FFFFFF" }; }
+
+/** Nur Briefe bzw. nur Pakete ("alles" = beides) */
+function nurArt(briefe, inhalt) {
+    if (inhalt === "briefe") return (briefe || []).filter(function (b) { return b.art !== "paket"; });
+    if (inhalt === "pakete") return (briefe || []).filter(function (b) { return b.art === "paket"; });
+    return briefe || [];
+}
+
+function isoTag(ms) { var d = new Date(ms); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+
+/** Kommt heute: Stand „heute“/„abholbereit“ oder heute erwartet */
+function paketHeute(b, jetzt) { return b.stand === "heute" || b.stand === "abholbereit" || (!!b.erwartet && b.erwartet === isoTag(jetzt)); }
+
+/**
+ * Pakete gruppieren: heute (kommt heute, abholbereit) / unterwegs (nach Termin) / zugestellt.
+ */
+function paketGruppen(briefe, jetzt) {
+    var p = nurArt(briefe, "pakete"), g = { heute: [], unterwegs: [], angekommen: [] };
+    for (var i = 0; i < p.length; i++) {
+        var b = p[i];
+        if (erledigt(b)) g.angekommen.push(b);
+        else if (paketHeute(b, jetzt)) g.heute.push(b);
+        else g.unterwegs.push(b);
+    }
+    var nachTermin = function (a, b) { return (a.erwartet || "9999") < (b.erwartet || "9999") ? -1 : (a.erwartet || "9999") > (b.erwartet || "9999") ? 1 : b.datum - a.datum; };
+    g.heute.sort(nachTermin); g.unterwegs.sort(nachTermin);
+    g.angekommen.sort(function (a, b) { return b.datum - a.datum; });
+    g.offen = g.heute.concat(g.unterwegs);
+    return g;
+}
+
+/** „voraussichtlich Do 23.10., 10:00–13:00“, „heute 9:30–10:30“, „zur Abholung bereit“ */
+function erwartetText(b, jetzt) {
+    if (b.stand === "zugestellt") return t("zugestellt");
+    if (b.stand === "abholbereit") return t("zur Abholung bereit");
+    var f = b.zeitfenster ? ", " + b.zeitfenster : "";
+    if (b.erwartet) {
+        var teile = b.erwartet.split("-"), d = new Date(+teile[0], +teile[1] - 1, +teile[2]).getTime();
+        var tage = Math.round((new Date(+teile[0], +teile[1] - 1, +teile[2]).getTime() - new Date(new Date(jetzt).getFullYear(), new Date(jetzt).getMonth(), new Date(jetzt).getDate()).getTime()) / 86400000);
+        if (tage === 0) return t("kommt heute") + f;
+        if (tage === 1) return t("kommt morgen") + f;
+        var x = new Date(d), wt = [t("So"), t("Mo"), t("Di"), t("Mi"), t("Do"), t("Fr"), t("Sa")][x.getDay()];
+        return t("voraussichtlich %1", (tage > 1 && tage < 7 ? wt + " " : "") + x.getDate() + "." + (x.getMonth() + 1) + ".") + f;
+    }
+    if (b.stand === "heute") return t("kommt heute") + f;
+    return t("unterwegs");
+}
+
+/** Zeile unter dem Absender eines Pakets: Termin · Kundenkonto · Postfach */
+function paketZeile(b, jetzt, mitKonto) {
+    var teile = [erwartetText(b, jetzt)];
+    if (b.kundenkonto) teile.push(b.kundenkonto);
+    else if (mitKonto && b.konto_name) teile.push(b.konto_name);
+    return teile.join(" · ");
+}
+
+/** Titel für Pakete: „3 Pakete unterwegs“ */
+function paketTitel(offen) { return offen.length ? t("%1 unterwegs", anzahl(offen)) : t("Keine Pakete unterwegs"); }
+
+/** Dienst an der Sendungsnummer erkennen ("" = nicht eindeutig) – wie in der Integration */
+function dienstVonNummer(n) {
+    n = String(n || "").replace(/\s+/g, "").toUpperCase();
+    if (/^(TBA\d{9,14}|\d{3}-\d{7}-\d{7})$/.test(n)) return "amazon";
+    if (/^(JJD\d{12,20}|00\d{18}|\d{20}|\d{12})$/.test(n)) return "dhl";
+    if (/^H[0-9A-Z]{19}$/.test(n)) return "hermes";
+    return "";
 }

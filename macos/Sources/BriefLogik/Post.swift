@@ -14,6 +14,16 @@ public struct Brief: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var stand: String
     public var kontoId: String
     public var kontoName: String
+    // Pakete (ab Integration 1.4): Dienst, voraussichtliche Zustellung, Kundenkonto, Link zur Sendungsverfolgung
+    public var dienst: String = ""
+    public var dienstName: String = ""
+    /// "2026-10-23" oder ""
+    public var erwartet: String = ""
+    public var zeitfenster: String = ""
+    public var kundenkonto: String = ""
+    public var verfolgen: String = ""
+    public var manuell = false
+    public var statusText: String = ""
 
     public init(id: String, datum: Date, absender: String, paket: Bool = false, bild: Bool = false, wichtig: Bool = false,
                 erledigt: Bool = false, sendung: String = "", stand: String = "", kontoId: String = "", kontoName: String = "") {
@@ -21,10 +31,20 @@ public struct Brief: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.erledigt = erledigt; self.sendung = sendung; self.stand = stand; self.kontoId = kontoId; self.kontoName = kontoName
     }
 
+    /// Kommt heute: Stand „heute“/„abholbereit“ oder heute erwartet
+    public func kommtHeute(jetzt: Date = Date(), kalender: Calendar = .current) -> Bool {
+        stand == "heute" || stand == "abholbereit" || (!erwartet.isEmpty && erwartet == PostText.isoTag(jetzt, kalender: kalender))
+    }
+    /// Link zur Sendungsverfolgung (von der Integration; sonst DHL)
+    public var verfolgenURL: URL? {
+        if !verfolgen.isEmpty, let u = URL(string: verfolgen), u.scheme == "https" { return u }
+        return sendung.isEmpty ? nil : PostText.dhl(sendung)
+    }
+
     /// Angekommen: abgehakt oder zugestelltes Paket
     public var istErledigt: Bool { erledigt || (paket && stand == "zugestellt") }
     /// Paket: 1 unterwegs, 2 kommt heute, 3 zugestellt
-    public var stufe: Int { stand == "zugestellt" ? 3 : stand == "heute" ? 2 : 1 }
+    public var stufe: Int { stand == "zugestellt" ? 3 : stand == "heute" || stand == "abholbereit" ? 2 : 1 }
     public var absenderText: String { absender.isEmpty ? (paket ? T("Paket") : T("Absender unbekannt")) : absender }
 }
 
@@ -61,10 +81,21 @@ public struct Post: Equatable, Sendable {
         }
         let briefe = liste.compactMap { b -> Brief? in
             guard let id = b["id"]?.text, let d = zeit(b["datum"]) else { return nil }
-            return Brief(id: id, datum: d, absender: b["absender"]?.text ?? "", paket: b["art"]?.text == "paket",
-                         bild: b["bild"]?.bool ?? false, wichtig: b["wichtig"]?.bool ?? false, erledigt: b["erledigt"]?.bool ?? false,
-                         sendung: b["sendung"]?.text ?? "", stand: b["stand"]?.text ?? "",
-                         kontoId: b["konto"]?.text ?? "", kontoName: b["konto_name"]?.text ?? "")
+            var brief = Brief(id: id, datum: d, absender: b["absender"]?.text ?? "", paket: b["art"]?.text == "paket",
+                              bild: b["bild"]?.bool ?? false, wichtig: b["wichtig"]?.bool ?? false, erledigt: b["erledigt"]?.bool ?? false,
+                              sendung: b["sendung"]?.text ?? "", stand: b["stand"]?.text ?? "",
+                              kontoId: b["konto"]?.text ?? "", kontoName: b["konto_name"]?.text ?? "")
+            if brief.paket {
+                brief.dienst = b["dienst"]?.text ?? "dhl"
+                brief.dienstName = b["dienst_name"]?.text ?? PostText.dienstName(brief.dienst)
+                brief.erwartet = b["erwartet"]?.text ?? ""
+                brief.zeitfenster = b["zeitfenster"]?.text ?? ""
+                brief.kundenkonto = b["kundenkonto"]?.text ?? ""
+                brief.verfolgen = b["verfolgen"]?.text ?? ""
+                brief.manuell = b["manuell"]?.bool ?? false
+                brief.statusText = b["status_text"]?.text ?? ""
+            }
+            return brief
         }
         return Post(stand: zeit(j["stand"]), fehler: j["fehler"]?.text ?? "", konten: konten, briefe: briefe)
     }
@@ -91,6 +122,24 @@ public struct Gruppen: Equatable, Sendable {
     public var unterwegs: [Brief] = []
     public var angekommen: [Brief] = []
     public var offen: [Brief] { heute + unterwegs }
+
+    /// Nur Pakete: heute (kommt heute, abholbereit) / unterwegs (nach Termin) / zugestellt
+    public static func pakete(_ briefe: [Brief], jetzt: Date = Date(), kalender: Calendar = .current) -> Gruppen {
+        var g = Gruppen([])
+        for b in briefe where b.paket {
+            if b.istErledigt { g.angekommen.append(b) }
+            else if b.kommtHeute(jetzt: jetzt, kalender: kalender) { g.heute.append(b) }
+            else { g.unterwegs.append(b) }
+        }
+        let nachTermin: (Brief, Brief) -> Bool = { a, b in
+            let x = a.erwartet.isEmpty ? "9999" : a.erwartet, y = b.erwartet.isEmpty ? "9999" : b.erwartet
+            return x != y ? x < y : a.datum > b.datum
+        }
+        g.heute.sort(by: nachTermin)
+        g.unterwegs.sort(by: nachTermin)
+        g.angekommen.sort { $0.datum > $1.datum }
+        return g
+    }
 
     public init(_ briefe: [Brief], jetzt: Date = Date(), kalender: Calendar = .current) {
         // wichtige zuerst, sonst neueste zuerst
@@ -131,6 +180,9 @@ public enum PostText {
 
     /// "angekündigt heute", "kommt heute", "zugestellt" (+ Postfach)
     public static func unterzeile(_ b: Brief, jetzt: Date = Date(), mitKonto: Bool = false, kalender: Calendar = .current) -> String {
+        if b.paket && !(b.dienst.isEmpty && b.erwartet.isEmpty && b.kundenkonto.isEmpty) {
+            return paketZeile(b, jetzt: jetzt, mitKonto: mitKonto, kalender: kalender)
+        }
         var teile: [String] = []
         if b.paket && b.stand == "zugestellt" { teile.append(T("zugestellt")) }
         else if b.paket && b.stand == "heute" { teile.append(T("kommt heute")) }
@@ -138,6 +190,56 @@ public enum PostText {
         if b.erledigt && !b.paket { teile.append(T("angekommen")) }
         if mitKonto && !b.kontoName.isEmpty { teile.append(b.kontoName) }
         return teile.joined(separator: " · ")
+    }
+
+    // MARK: Pakete
+
+    public static func dienstName(_ d: String) -> String {
+        ["dhl": "DHL", "hermes": "Hermes", "dpd": "DPD", "amazon": "Amazon"][d] ?? d.uppercased()
+    }
+
+    public static func isoTag(_ d: Date, kalender: Calendar = .current) -> String {
+        let k = kalender.dateComponents([.year, .month, .day], from: d)
+        return String(format: "%04d-%02d-%02d", k.year ?? 0, k.month ?? 0, k.day ?? 0)
+    }
+
+    /// „voraussichtlich Fr 23.10., 10:00–13:00“, „kommt heute“, „zur Abholung bereit“
+    public static func erwartet(_ b: Brief, jetzt: Date = Date(), kalender: Calendar = .current) -> String {
+        if b.stand == "zugestellt" { return T("zugestellt") }
+        if b.stand == "abholbereit" { return T("zur Abholung bereit") }
+        let f = b.zeitfenster.isEmpty ? "" : ", " + b.zeitfenster
+        let teile = b.erwartet.split(separator: "-").compactMap { Int($0) }
+        if teile.count == 3, let d = kalender.date(from: DateComponents(year: teile[0], month: teile[1], day: teile[2])) {
+            let tage = kalender.dateComponents([.day], from: kalender.startOfDay(for: jetzt), to: d).day ?? 0
+            if tage == 0 { return T("kommt heute") + f }
+            if tage == 1 { return T("kommt morgen") + f }
+            let wt = [T("So"), T("Mo"), T("Di"), T("Mi"), T("Do"), T("Fr"), T("Sa")][kalender.component(.weekday, from: d) - 1]
+            let tm = "\(teile[2]).\(teile[1])."
+            return T("voraussichtlich %1", tage > 1 && tage < 7 ? wt + " " + tm : tm) + f
+        }
+        if b.stand == "heute" { return T("kommt heute") + f }
+        return T("unterwegs")
+    }
+
+    /// Termin · Kundenkonto (bzw. Postfach)
+    public static func paketZeile(_ b: Brief, jetzt: Date = Date(), mitKonto: Bool = false, kalender: Calendar = .current) -> String {
+        var teile = [erwartet(b, jetzt: jetzt, kalender: kalender)]
+        if !b.kundenkonto.isEmpty { teile.append(b.kundenkonto) } else if mitKonto && !b.kontoName.isEmpty { teile.append(b.kontoName) }
+        return teile.joined(separator: " · ")
+    }
+
+    public static func paketTitel(_ offen: [Brief]) -> String {
+        offen.isEmpty ? T("Keine Pakete unterwegs") : T("%1 unterwegs", anzahl(offen))
+    }
+
+    /// Dienst an der Nummer erkennen ("" = nicht eindeutig)
+    public static func dienstVonNummer(_ nummer: String) -> String {
+        let n = nummer.replacingOccurrences(of: " ", with: "").uppercased()
+        func passt(_ muster: String) -> Bool { n.range(of: "^(" + muster + ")$", options: .regularExpression) != nil }
+        if passt("TBA[0-9]{9,14}|[0-9]{3}-[0-9]{7}-[0-9]{7}") { return "amazon" }
+        if passt("JJD[0-9]{12,20}|00[0-9]{18}|[0-9]{20}|[0-9]{12}") { return "dhl" }
+        if passt("H[0-9A-Z]{19}") { return "hermes" }
+        return ""
     }
 
     /// "vor 5 min", "vor 3 h"

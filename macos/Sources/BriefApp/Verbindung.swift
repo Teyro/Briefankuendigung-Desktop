@@ -102,6 +102,32 @@ final class Verbindung {
         }
     }
 
+    /// Sendung von Hand verfolgen – gibt bei Erfolg "" zurück, sonst den Fehler
+    func sendungHinzufuegen(nummer: String, dienst: String, name: String) async -> String {
+        let (_, status) = await anfrage("/api/briefankuendigung/sendung", methode: "POST",
+                                        koerper: ["nummer": nummer, "dienst": dienst, "name": name, "konto": konto])
+        switch status {
+        case 200: await laden(); return ""
+        case 400: return T("Sendungsnummer oder Paketdienst nicht erkannt.")
+        case 404, 405: return T("Dafür die Integration auf Version 1.4 aktualisieren.")
+        default: return fehlerText(status)
+        }
+    }
+
+    /// Von Hand hinzugefügte Sendung entfernen (Sendungen aus Mails gelten danach als angekommen)
+    func sendungEntfernen(_ id: String) {
+        if var p = post {
+            p.briefe.removeAll { $0.id == id && $0.manuell }
+            post = p
+            nachLaden()
+        }
+        Task {
+            let (_, status) = await anfrage("/api/briefankuendigung/sendung/entfernen", methode: "POST", koerper: ["id": id])
+            if status != 200 { meldung = fehlerText(status) }
+            await laden()
+        }
+    }
+
     @ObservationIgnored private var nachsehenSeit = Date.distantPast
     /// Home Assistant jetzt ins Postfach schauen lassen und ein paar Mal nachladen
     func jetztNachsehen() {

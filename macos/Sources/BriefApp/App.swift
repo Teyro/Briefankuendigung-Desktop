@@ -54,6 +54,17 @@ final class Kern {
 
     var gezeigt: Post? { ha.gezeigt }
     var gruppen: Gruppen { Gruppen(ha.gezeigt?.briefe ?? []) }
+    var briefGruppen: Gruppen { Gruppen((ha.gezeigt?.briefe ?? []).filter { !$0.paket }) }
+    var paketGruppen: Gruppen { Gruppen.pakete(ha.gezeigt?.briefe ?? []) }
+    /// Gibt es überhaupt Pakete? Dann zeigen Panel und Fenster „Briefe | Pakete“
+    var mitPaketen: Bool { ha.gezeigt?.briefe.contains(where: \.paket) ?? false }
+    /// "briefe" oder "pakete"
+    var bereich = "briefe"
+    /// Formular „Sendung verfolgen“ offen
+    var formular = false
+    var paketAnsicht: Bool { mitPaketen && bereich == "pakete" }
+    /// Gezeigte Gruppen (Panel, Fenster)
+    var ansicht: Gruppen { !mitPaketen ? gruppen : paketAnsicht ? paketGruppen : briefGruppen }
 
     private init() {
         Sprache.laden()
@@ -225,6 +236,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     Kern.shared.fensterOeffnen("einstellungen")
                 }
             }
+        }
+    }
+
+    /// Klick auf das Pakete-Widget: Fenster mit den Paketen
+    func application(_ application: NSApplication, open urls: [URL]) {
+        MainActor.assumeIsolated {
+            if urls.contains(where: { $0.scheme == "briefankuendigung" && $0.host == "pakete" }) { Kern.shared.bereich = "pakete" }
+            Kern.shared.fensterOeffnen("briefe")
         }
     }
 

@@ -12,6 +12,9 @@ public struct WidgetDaten: Codable, Equatable, Sendable {
     public var heute = 0
     public var zuletzt: Brief?
     public var mehrereKonten = false
+    /// Pakete unterwegs (nach Termin) – für das Pakete-Widget
+    public var pakete: [Brief] = []
+    public var paketeHeute = 0
 
     public init() {}
 
@@ -27,6 +30,9 @@ public struct WidgetDaten: Codable, Equatable, Sendable {
         gelesen = post.stand
         naechsterAbruf = post.naechsterAbruf
         mehrereKonten = post.mehrereKonten
+        let p = Gruppen.pakete(post.briefe, jetzt: jetzt)
+        pakete = Array((p.heute + p.unterwegs).prefix(12))
+        paketeHeute = p.heute.count
     }
 
     /// Ordner der App (die Widgets lesen ihn über eine Ausnahme in ihrer Sandbox)

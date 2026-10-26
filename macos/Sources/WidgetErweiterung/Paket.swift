@@ -9,6 +9,7 @@ struct BriefWidgets: WidgetBundle {
     init() { Sprache.laden() }
     var body: some Widget {
         PostWidget()
+        PaketeWidget()
     }
 }
 
@@ -19,10 +20,11 @@ struct Eintrag: TimelineEntry {
 }
 
 struct Anbieter: TimelineProvider {
+    var pakete = false
     private func aktuell() -> Eintrag {
         let d = WidgetDaten.lesen() ?? WidgetDaten()
-        let n = d.offen.count
-        let i = n > 0 ? min(max(0, WidgetSpeicher.index), n - 1) : 0
+        let n = d.liste(pakete).count
+        let i = n > 0 ? min(max(0, pakete ? WidgetSpeicher.paketIndex : WidgetSpeicher.index), n - 1) : 0
         return Eintrag(date: Date(), daten: d, index: i)
     }
     func placeholder(in context: Context) -> Eintrag { aktuell() }
@@ -44,17 +46,31 @@ struct PostWidget: Widget {
     }
 }
 
+/// Nur Pakete (DHL, Hermes, DPD, Amazon) – nach voraussichtlicher Zustellung
+struct PaketeWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "pakete", provider: Anbieter(pakete: true)) { e in
+            WidgetInhalt(e: e, pakete: true)
+        }
+        .configurationDisplayName(T("Pakete"))
+        .description(T("Pakete von DHL, Hermes, DPD und Amazon – mit voraussichtlicher Zustellung."))
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+
 struct WidgetInhalt: View {
     let e: Eintrag
+    var pakete = false
     @Environment(\.widgetFamily) private var familie
     var body: some View {
         Group {
             switch familie {
-            case .systemSmall: KleinesWidget(daten: e.daten)
-            case .systemLarge, .systemExtraLarge: ListenWidget(daten: e.daten)
-            default: KartenWidget(daten: e.daten, index: e.index)
+            case .systemSmall: KleinesWidget(daten: e.daten, pakete: pakete)
+            case .systemLarge, .systemExtraLarge: ListenWidget(daten: e.daten, pakete: pakete)
+            default: KartenWidget(daten: e.daten, pakete: pakete, index: e.index)
             }
         }
+        .widgetURL(pakete ? URL(string: "briefankuendigung://pakete") : nil)
         .containerBackground(for: .widget) {
             LinearGradient(colors: [Color.accentColor.opacity(0.14), Color.accentColor.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .background(.background)

@@ -1,6 +1,6 @@
 # Briefankündigung – Desktop (Plasma 6 & macOS)
 
-**Angekündigte Briefe und Pakete der Deutschen Post und von DHL – auf dem Schreibtisch.**
+**Angekündigte Briefe der Deutschen Post und Pakete von DHL, Hermes, DPD und Amazon – auf dem Schreibtisch.**
 Ein Widget für KDE Plasma 6 und eine native macOS-App (Menüleiste + Schreibtisch-Widgets) für die
 Home-Assistant-Integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA): sehen, wer geschrieben
 hat, bevor der Brief im Kasten liegt – mit dem Bild des Umschlags.
@@ -17,6 +17,9 @@ hat, bevor der Brief im Kasten liegt – mit dem Bild des Umschlags.
   von selbst) oder als Liste: **Heute · Noch unterwegs · Angekommen**
 - Umschlagbilder der Post, **DHL-Pakete** mit Fortschritt (unterwegs → kommt heute → zugestellt) und
   Sendungsverfolgung, **wichtige Absender** (Finanzamt, Gericht …) hervorgehoben
+- **Pakete** von **DHL, Hermes, DPD und Amazon** in einem eigenen Reiter: voraussichtliche Zustellung mit
+  Zeitfenster („kommt morgen, 10:00–13:00“), „zur Abholung bereit“, Logo in den Farben des Dienstes, passender
+  Verfolgen-Link, Kundenkonto bei mehreren Amazon-Konten – und **Sendung per Nummer selbst hinzufügen**
 - **„Angekommen“** – abgehakt gilt über Home Assistant auf allen Geräten
 - **„Jetzt nachsehen“** – Home Assistant liest das Postfach sofort
 - Mehrere Postfächer (z. B. deins und Johannas) – alle oder eins
@@ -28,15 +31,17 @@ hat, bevor der Brief im Kasten liegt – mit dem Bild des Umschlags.
   bei kleiner nur das Symbol mit Zahl
 - Im Panel: Symbol mit Zahl (hervorgehoben, wenn heute etwas kommt), Liste im Popup
 - Übernimmt die Verbindung automatisch aus der **Home Assistant ToolBox**, falls installiert
+- Je Kachel wählbar: alles (mit Reitern), nur Briefe oder **nur Pakete** – z. B. zwei Kacheln nebeneinander
 
 ### macOS (ab 14 Sonoma, Liquid Glass ab macOS 26)
 - Menüleisten-App mit Karten und Liste, Fenster mit allen Briefen
 - **Schreibtisch-Widgets** (klein, mittel, groß) – im Widget durchblättern und „Angekommen“ antippen
+- Eigenes **Pakete-Widget**, sortiert nach voraussichtlicher Zustellung
 - Token im Schlüsselbund; kann die Verbindung aus der Home Assistant ToolBox übernehmen
 
 ## Voraussetzung
 
-Home Assistant mit der Integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA) **ab 1.3** (HACS)
+Home Assistant mit der Integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA) **ab 1.3** (HACS; Pakete von Hermes, DPD, Amazon und Sendung hinzufügen: **ab 1.4**)
 und ein langlebiges Zugriffstoken (unten links auf den Namen → Sicherheit).
 
 ## Installieren
