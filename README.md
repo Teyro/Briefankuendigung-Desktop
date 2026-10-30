@@ -1,5 +1,8 @@
 # Briefankündigung – Desktop (Plasma 6 & macOS)
 
+> **Archived – replaced by [Post & Pakete](https://github.com/Teyro/Post-und-Pakete)**, one app for letters and parcels on iPhone, iPad, Mac and Linux (Plasma widget included).
+
+
 **Letters announced by Deutsche Post and parcels from DHL, Hermes, DPD and Amazon – on your desktop.**
 A KDE Plasma 6 widget and a native macOS app (menu bar + desktop widgets) for the Home Assistant
 integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA): see who wrote to you before the

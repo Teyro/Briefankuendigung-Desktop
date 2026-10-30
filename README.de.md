@@ -1,5 +1,8 @@
 # Briefankündigung – Desktop (Plasma 6 & macOS)
 
+> **Archiviert – ersetzt durch [Post & Pakete](https://github.com/Teyro/Post-und-Pakete)**: eine App für Briefe und Pakete auf iPhone, iPad, Mac und Linux (mit Plasma-Widget).
+
+
 **Angekündigte Briefe der Deutschen Post und Pakete von DHL, Hermes, DPD und Amazon – auf dem Schreibtisch.**
 Ein Widget für KDE Plasma 6 und eine native macOS-App (Menüleiste + Schreibtisch-Widgets) für die
 Home-Assistant-Integration [Briefankündigung](https://github.com/Teyro/Briefankuendigung-HA): sehen, wer geschrieben
